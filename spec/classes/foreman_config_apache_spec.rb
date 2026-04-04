@@ -308,6 +308,29 @@ describe 'foreman::config::apache' do
               .with_proxy_add_headers(false)
           end
         end
+
+        describe 'access log format' do
+          it 'defines foreman_combined log format alias in both vhosts by default' do
+            should contain_apache__vhost('foreman')
+              .with_log_formats({ 'foreman_combined' => '%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\" %D \"%{X-Forwarded-For}i\"' })
+            should contain_apache__vhost('foreman-ssl')
+              .with_log_formats({ 'foreman_combined' => '%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\" %D \"%{X-Forwarded-For}i\"' })
+          end
+
+          it 'uses default combined format when access_log_format is not set' do
+            should contain_apache__vhost('foreman').with_access_log_format(nil)
+            should contain_apache__vhost('foreman-ssl').with_access_log_format(nil)
+          end
+
+          describe 'with access_log_format set to foreman_combined' do
+            let(:params) { super().merge(access_log_format: 'foreman_combined') }
+
+            it 'passes access_log_format to both vhosts' do
+              should contain_apache__vhost('foreman').with_access_log_format('foreman_combined')
+              should contain_apache__vhost('foreman-ssl').with_access_log_format('foreman_combined')
+            end
+          end
+        end
       end
     end
   end

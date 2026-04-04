@@ -66,7 +66,17 @@
 #   on startup rather than on demand.
 #
 # @param access_log_format
-#   Apache log format to use
+#   Apache log format to use. Defaults to undef, which renders as Apache's
+#   standard combined format. To enable enhanced registration observability,
+#   set this to an explicit format string that includes:
+#   - %D  request time in microseconds (divide by 1000 for ms) — exposes
+#     proxy/SSL overhead Rails never measures and reveals client-visible
+#     timeouts (requests with 504/408 in Apache but no matching Rails log)
+#   - %{X-Forwarded-For}i — preserves the original client IP chain through
+#     capsule hops; without this Satellite only sees the capsule IP
+#   Example (set in Hiera):
+#     foreman::config::apache::access_log_format: >-
+#       %h %l %u %t "%r" %>s %b %D "%{X-Forwarded-For}i" "%{User-agent}i"
 #
 # @param ipa_authentication
 #   Whether to install support for IPA authentication
@@ -282,6 +292,11 @@ class foreman::config::apache (
     servername            => $servername,
     serveraliases         => $serveraliases,
     access_log_format     => $access_log_format,
+    log_formats           => {
+      # Named alias for enhanced registration observability.
+      # Opt in by setting: foreman::config::apache::access_log_format: foreman_combined
+      'foreman_combined' => '%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\" %D \"%{X-Forwarded-For}i\"',
+    },
     additional_includes   => ["${apache::confd_dir}/${priority}-foreman.d/*.conf"],
     use_optional_includes => true,
     custom_fragment       => $custom_fragment,
@@ -327,6 +342,9 @@ class foreman::config::apache (
       ssl_options           => '+StdEnvVars +ExportCertData',
       ssl_verify_depth      => 3,
       access_log_format     => $access_log_format,
+      log_formats           => {
+        'foreman_combined' => '%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\" %D \"%{X-Forwarded-For}i\"',
+      },
       additional_includes   => ["${apache::confd_dir}/${priority}-foreman-ssl.d/*.conf"],
       use_optional_includes => true,
       custom_fragment       => $custom_fragment,
